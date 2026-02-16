@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "CalSnap",
+    "slug": "food-logging",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs camera access to capture food photos.",
+        "NSPhotoLibraryUsageDescription": "This app needs photo library access to select food photos."
+      }
+    },
+    "android": {
+      "package": "com.example.foodlogging",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "extra": {
+      "apiBaseUrl": "http://localhost:4000"
+    }
+  }
+}
