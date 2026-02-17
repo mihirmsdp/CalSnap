@@ -1,5 +1,6 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
 import { FoodLog, GeminiAnalysisResult, MealType } from "@/types/models";
+import { FoodItem as USDAFoodItem } from "@/services/usdaFoodService";
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -11,7 +12,7 @@ export type MainTabParamList = {
   Home: undefined;
   Progress: undefined;
   Scan: undefined;
-  Chat: undefined;
+  Discover: undefined;
   Profile: undefined;
 };
 
@@ -38,6 +39,15 @@ export type MainStackParamList = {
   RateApp: undefined;
   AboutApp: undefined;
   ChangePassword: undefined;
+  FoodSearch:
+    | {
+        mealType?: MealType;
+      }
+    | undefined;
+  FoodDetails: {
+    food: USDAFoodItem;
+    mealType?: MealType;
+  };
 };
 
 export type RootStackParamList = {

@@ -1,4 +1,4 @@
-/* eslint-disable no-undef */
+﻿/* eslint-disable no-undef */
 import dotenv from "dotenv";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,7 +17,14 @@ const app = express();
 const port = process.env.PORT || 4000;
 
 app.use(cors());
-app.use(express.json({ limit: "12mb" }));
+app.use(express.json({ limit: "30mb" }));
+app.use((err, _req, res, next) => {
+  if (!err) return next();
+  if (err.type === "entity.too.large") {
+    return res.status(413).json({ error: "Image payload too large" });
+  }
+  return res.status(400).json({ error: "Invalid request body", details: err.message });
+});
 
 const FOOD_PROMPT = `
 Analyze this food image and return ONLY a valid JSON object with this exact structure:
@@ -53,6 +60,24 @@ Analyze this food image and return ONLY a valid JSON object with this exact stru
   }
 }
 Do not return markdown or code fences.
+`;
+
+const DISCOVER_PROMPT = `
+You are a nutrition coach. Create a personalized Discover feed as valid JSON only.
+Return this exact structure:
+{
+  "cards": [
+    {
+      "id": "short-id",
+      "title": "short title",
+      "description": "one short actionable tip",
+      "reason": "why this matters based on user data",
+      "category": "swap|tip|protein|carb|micronutrient|habit",
+      "actionLabel": "optional short action"
+    }
+  ]
+}
+Generate 6 cards max. Be specific, practical, and concise.
 `;
 
 const parseGeminiJson = (text) => {
@@ -103,6 +128,20 @@ const normalizeToClientShape = (payload) => {
   };
 };
 
+const normalizeDiscoverShape = (payload) => {
+  const cards = Array.isArray(payload?.cards) ? payload.cards : [];
+  return {
+    cards: cards.slice(0, 6).map((card, index) => ({
+      id: String(card?.id || `card_${index + 1}`),
+      title: String(card?.title || "Nutrition Insight"),
+      description: String(card?.description || "Keep your meals balanced."),
+      reason: String(card?.reason || "Based on your recent logs."),
+      category: String(card?.category || "tip"),
+      actionLabel: card?.actionLabel ? String(card.actionLabel) : undefined
+    }))
+  };
+};
+
 app.post("/api/analyze-food", async (req, res) => {
   try {
     if (!process.env.GEMINI_API_KEY) {
@@ -138,6 +177,45 @@ app.post("/api/analyze-food", async (req, res) => {
     console.error("Gemini API error:", error);
     return res.status(500).json({
       error: "Failed to analyze food image",
+      details: error instanceof Error ? error.message : "Unknown server error"
+    });
+  }
+});
+
+app.post("/api/discover-feed", async (req, res) => {
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({ error: "Missing GEMINI_API_KEY" });
+    }
+
+    const { summary } = req.body || {};
+    if (!summary) {
+      return res.status(400).json({ error: "summary is required" });
+    }
+
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const result = await model.generateContent([
+      DISCOVER_PROMPT,
+      `User summary JSON:\n${JSON.stringify(summary)}`
+    ]);
+
+    const text = result?.response?.text?.();
+    if (!text) {
+      return res.status(502).json({ error: "Gemini returned no text output." });
+    }
+    const cleanedText = text.replace(/```json\s*|\s*```/g, "").trim();
+    const parsed = parseGeminiJson(cleanedText);
+    const normalized = normalizeDiscoverShape(parsed);
+    return res.json({
+      dateKey: String(summary.dateKey || ""),
+      cards: normalized.cards,
+      createdAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Discover API error:", error);
+    return res.status(500).json({
+      error: "Failed to generate discover feed",
       details: error instanceof Error ? error.message : "Unknown server error"
     });
   }

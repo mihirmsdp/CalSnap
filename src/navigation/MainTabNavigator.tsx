@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
@@ -6,7 +6,7 @@ import { MainTabParamList } from "@/types/navigation";
 import { HomeScreen } from "@/screens/main/HomeScreen";
 import { HistoryScreen } from "@/screens/main/HistoryScreen";
 import { ProfileScreen } from "@/screens/main/ProfileScreen";
-import { ChatScreen } from "@/screens/main/ChatScreen";
+import { DiscoverScreen } from "@/screens/main/DiscoverScreen";
 import { ScanPlaceholderScreen } from "@/screens/main/ScanPlaceholderScreen";
 import { ScanActionModal } from "@/components/logging/ScanActionModal";
 
@@ -43,7 +43,7 @@ export const MainTabNavigator = (): React.JSX.Element => {
           Home: focused ? "home" : "home-outline",
           Progress: focused ? "bar-chart" : "bar-chart-outline",
           Scan: "scan-circle",
-          Chat: focused ? "chatbubble" : "chatbubble-outline",
+          Discover: focused ? "compass" : "compass-outline",
           Profile: focused ? "person" : "person-outline"
         };
 
@@ -82,7 +82,7 @@ export const MainTabNavigator = (): React.JSX.Element => {
             }
           }}
         />
-        <Tab.Screen name="Chat" component={ChatScreen} />
+        <Tab.Screen name="Discover" component={DiscoverScreen} options={{ title: "Discover" }} />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
 

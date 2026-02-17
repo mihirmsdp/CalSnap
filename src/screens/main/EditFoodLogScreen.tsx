@@ -22,6 +22,58 @@ const asNumber = (value: string): number => {
 const updateFood = (foods: FoodItem[], index: number, update: (food: FoodItem) => FoodItem): FoodItem[] =>
   foods.map((food, i) => (i === index ? update(food) : food));
 
+const parseQuantityAmount = (value: string): number => {
+  const match = value.match(/(\d+(\.\d+)?)/);
+  if (!match) return 0;
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const cloneNutrition = (nutrition: FoodItem["nutrition"]): FoodItem["nutrition"] => ({
+  calories: nutrition.calories || 0,
+  protein: nutrition.protein || 0,
+  carbs: nutrition.carbs || 0,
+  fat: nutrition.fat || 0,
+  fiber: nutrition.fiber || 0,
+  sugar: nutrition.sugar || 0,
+  sodium: nutrition.sodium || 0,
+  vitamins: {
+    vitaminA: Number(nutrition.vitamins?.vitaminA || 0),
+    vitaminC: Number(nutrition.vitamins?.vitaminC || 0),
+    vitaminD: Number(nutrition.vitamins?.vitaminD || 0)
+  },
+  minerals: {
+    calcium: Number(nutrition.minerals?.calcium || 0),
+    iron: Number(nutrition.minerals?.iron || 0),
+    potassium: Number(nutrition.minerals?.potassium || 0)
+  }
+});
+
+const scaleNutrition = (nutrition: FoodItem["nutrition"], factor: number): FoodItem["nutrition"] => ({
+  calories: Number((nutrition.calories * factor).toFixed(2)),
+  protein: Number((nutrition.protein * factor).toFixed(2)),
+  carbs: Number((nutrition.carbs * factor).toFixed(2)),
+  fat: Number((nutrition.fat * factor).toFixed(2)),
+  fiber: Number(((nutrition.fiber || 0) * factor).toFixed(2)),
+  sugar: Number(((nutrition.sugar || 0) * factor).toFixed(2)),
+  sodium: Number(((nutrition.sodium || 0) * factor).toFixed(2)),
+  vitamins: {
+    vitaminA: Number(((nutrition.vitamins?.vitaminA || 0) * factor).toFixed(2)),
+    vitaminC: Number(((nutrition.vitamins?.vitaminC || 0) * factor).toFixed(2)),
+    vitaminD: Number(((nutrition.vitamins?.vitaminD || 0) * factor).toFixed(2))
+  },
+  minerals: {
+    calcium: Number(((nutrition.minerals?.calcium || 0) * factor).toFixed(2)),
+    iron: Number(((nutrition.minerals?.iron || 0) * factor).toFixed(2)),
+    potassium: Number(((nutrition.minerals?.potassium || 0) * factor).toFixed(2))
+  }
+});
+
+interface FoodBase {
+  baseAmount: number;
+  baseNutrition: FoodItem["nutrition"];
+}
+
 const createEmptyFood = (): FoodItem => ({
   name: "",
   servingSize: "",
@@ -74,14 +126,45 @@ export const EditFoodLogScreen = ({ route, navigation }: Props): React.JSX.Eleme
   const [mealType, setMealType] = useState<MealType>(
     isEditMode ? route.params.existingLog.mealType : route.params.preselectedMealType || "lunch"
   );
-  const [foods, setFoods] = useState<FoodItem[]>(
-    isEditMode ? route.params.existingLog.foods : route.params.aiResults.foods
+  const initialFoods = isEditMode ? route.params.existingLog.foods : route.params.aiResults.foods;
+  const [foods, setFoods] = useState<FoodItem[]>(initialFoods);
+  const [foodBases, setFoodBases] = useState<FoodBase[]>(
+    initialFoods.map((food) => ({
+      baseAmount: Math.max(0.01, parseQuantityAmount(food.servingSize) || 1),
+      baseNutrition: cloneNutrition(food.nutrition)
+    }))
   );
   const [saving, setSaving] = useState(false);
   const [showMicros, setShowMicros] = useState<Record<number, boolean>>({});
 
   const imageUri = isEditMode ? route.params.existingLog.photoUrl : route.params.imageUri;
   const totals = useMemo(() => sumNutrition(foods), [foods]);
+
+  const handleQuantityChange = (index: number, nextServingSize: string): void => {
+    const nextAmount = parseQuantityAmount(nextServingSize);
+    const base = foodBases[index];
+
+    if (!base || nextAmount <= 0) {
+      setFoods((prev) =>
+        updateFood(prev, index, (item) => ({
+          ...item,
+          servingSize: nextServingSize
+        }))
+      );
+      return;
+    }
+
+    const factor = nextAmount / Math.max(base.baseAmount, 0.01);
+    const nextNutrition = scaleNutrition(base.baseNutrition, factor);
+
+    setFoods((prev) =>
+      updateFood(prev, index, (item) => ({
+        ...item,
+        servingSize: nextServingSize,
+        nutrition: nextNutrition
+      }))
+    );
+  };
 
   const onSave = async (): Promise<void> => {
     if (!user) {
@@ -153,6 +236,16 @@ export const EditFoodLogScreen = ({ route, navigation }: Props): React.JSX.Eleme
         </View>
 
         {imageUri ? <Image source={{ uri: imageUri }} style={styles.preview} /> : null}
+        <View style={styles.topStatsRow}>
+          <View style={styles.topStatChip}>
+            <Ionicons name="restaurant-outline" size={14} color="#1f8f36" />
+            <Text style={styles.topStatText}>{foods.length} item{foods.length === 1 ? "" : "s"}</Text>
+          </View>
+          <View style={styles.topStatChip}>
+            <Ionicons name="flame-outline" size={14} color="#1f8f36" />
+            <Text style={styles.topStatText}>{Math.round(totals.calories)} kcal</Text>
+          </View>
+        </View>
       </View>
 
       <View style={styles.card}>
@@ -174,7 +267,13 @@ export const EditFoodLogScreen = ({ route, navigation }: Props): React.JSX.Eleme
         <View key={`${food.name}_${index}`} style={styles.card}>
           <View style={styles.foodHeader}>
             <Text style={styles.sectionTitle}>Food Item {index + 1}</Text>
-            <Pressable style={styles.removeFoodBtn} onPress={() => setFoods((prev) => prev.filter((_, i) => i !== index))}>
+            <Pressable
+              style={styles.removeFoodBtn}
+              onPress={() => {
+                setFoods((prev) => prev.filter((_, i) => i !== index));
+                setFoodBases((prev) => prev.filter((_, i) => i !== index));
+              }}
+            >
               <Ionicons name="trash-outline" size={14} color={colors.danger} />
               <Text style={styles.removeFoodText}>Remove</Text>
             </Pressable>
@@ -196,14 +295,7 @@ export const EditFoodLogScreen = ({ route, navigation }: Props): React.JSX.Eleme
           <FieldRow
             label="Quantity"
             value={food.servingSize}
-            onChangeText={(value) =>
-              setFoods((prev) =>
-                updateFood(prev, index, (item) => ({
-                  ...item,
-                  servingSize: value
-                }))
-              )
-            }
+            onChangeText={(value) => handleQuantityChange(index, value)}
             placeholder="e.g. 150g"
           />
           <FieldRow
@@ -409,7 +501,20 @@ export const EditFoodLogScreen = ({ route, navigation }: Props): React.JSX.Eleme
         </View>
       ))}
 
-      <Pressable style={styles.addFoodBtn} onPress={() => setFoods((prev) => [...prev, createEmptyFood()])}>
+      <Pressable
+        style={styles.addFoodBtn}
+        onPress={() => {
+          const empty = createEmptyFood();
+          setFoods((prev) => [...prev, empty]);
+          setFoodBases((prev) => [
+            ...prev,
+            {
+              baseAmount: 1,
+              baseNutrition: cloneNutrition(empty.nutrition)
+            }
+          ]);
+        }}
+      >
         <Ionicons name="add-circle-outline" size={16} color="#1f8f34" />
         <Text style={styles.addFoodText}>Add Food Item</Text>
       </Pressable>
@@ -452,9 +557,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#dfe8ea",
-    backgroundColor: "#f7fbf8",
+    backgroundColor: "#f2fbf4",
     padding: 10,
-    gap: 10
+    gap: 10,
+    shadowColor: "#0a0f0c",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2
   },
   headerTop: {
     flexDirection: "row",
@@ -484,16 +594,42 @@ const styles = StyleSheet.create({
   },
   preview: {
     width: "100%",
-    height: 180,
-    borderRadius: 12
+    height: 190,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#d7e6da"
+  },
+  topStatsRow: {
+    flexDirection: "row",
+    gap: 8
+  },
+  topStatChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#cce9d3",
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 10,
+    paddingVertical: 7
+  },
+  topStatText: {
+    color: "#2f4348",
+    fontWeight: "800"
   },
   card: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#dfe8ea",
+    borderColor: "#d9e6ea",
     backgroundColor: "#ffffff",
     padding: 12,
-    gap: 10
+    gap: 10,
+    shadowColor: "#0f1517",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1
   },
   sectionTitle: {
     color: "#1a252a",
@@ -546,9 +682,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 10,
     borderWidth: 1,
-    borderColor: "#e7edef",
+    borderColor: "#e1ebee",
     borderRadius: 12,
-    backgroundColor: "#fbfcfc",
+    backgroundColor: "#f8fbfc",
     paddingVertical: 8,
     paddingHorizontal: 10
   },
@@ -561,7 +697,7 @@ const styles = StyleSheet.create({
   fieldInput: {
     width: "52%",
     borderWidth: 1,
-    borderColor: "#d9e3e6",
+    borderColor: "#d4e0e4",
     borderRadius: 10,
     backgroundColor: "#fff",
     paddingHorizontal: 10,

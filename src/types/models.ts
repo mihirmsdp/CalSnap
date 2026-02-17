@@ -1,5 +1,5 @@
 export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
-export type LogType = "photo";
+export type LogType = "photo" | "manual_search";
 
 export interface NutritionInfo {
   calories: number;
@@ -122,6 +122,23 @@ export interface AchievementProgress {
   target: number;
   current: number;
   unlocked: boolean;
+}
+
+export type DiscoverCardCategory = "swap" | "tip" | "protein" | "carb" | "micronutrient" | "habit";
+
+export interface DiscoverCard {
+  id: string;
+  title: string;
+  description: string;
+  reason: string;
+  category: DiscoverCardCategory;
+  actionLabel?: string;
+}
+
+export interface DiscoverFeed {
+  dateKey: string;
+  cards: DiscoverCard[];
+  createdAt: string;
 }
 
 export interface GeminiAnalysisResult {

@@ -4,10 +4,30 @@
     "slug": "food-logging",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
+    "android": {
+      "package": "com.mihirmsdp.calsnap",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "web": {
+      "favicon": "./assets/images/favicon.png"
+    },
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -15,15 +35,11 @@
         "NSPhotoLibraryUsageDescription": "This app needs photo library access to select food photos."
       }
     },
-    "android": {
-      "package": "com.example.foodlogging",
-      "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE"
-      ]
-    },
     "extra": {
-      "apiBaseUrl": "http://localhost:4000"
+      "apiBaseUrl": "http://localhost:4000",
+      "eas": {
+        "projectId": "760ef835-9f35-45dc-bc4f-f4e400ce7c39"
+      }
     }
   }
 }

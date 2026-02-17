@@ -3,6 +3,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { MainStackParamList } from "@/types/navigation";
 import { MainTabNavigator } from "@/navigation/MainTabNavigator";
 import { EditFoodLogScreen } from "@/screens/main/EditFoodLogScreen";
+import { FoodDetailsScreen } from "@/screens/main/FoodDetailsScreen";
+import { FoodSearchScreen } from "@/screens/main/FoodSearchScreen";
 import { OnboardingEditScreen } from "@/screens/onboarding/OnboardingEditScreen";
 import {
   AboutAppScreen,
@@ -32,5 +34,7 @@ export const MainNavigator = (): React.JSX.Element => (
     <Stack.Screen name="RateApp" component={RateAppScreen} options={{ title: "Rate App" }} />
     <Stack.Screen name="AboutApp" component={AboutAppScreen} options={{ title: "About" }} />
     <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: "Change Password" }} />
+    <Stack.Screen name="FoodSearch" component={FoodSearchScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="FoodDetails" component={FoodDetailsScreen} options={{ headerShown: false }} />
   </Stack.Navigator>
 );

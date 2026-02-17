@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Svg, { Circle } from "react-native-svg";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Screen } from "@/components/common/Screen";
@@ -15,32 +14,6 @@ import { MainStackParamList } from "@/types/navigation";
 
 const clamp = (value: number, min = 0, max = 1): number => Math.min(max, Math.max(min, value));
 
-const RingMeter = ({ progress, color }: { progress: number; color: string }): React.JSX.Element => {
-  const size = 56;
-  const stroke = 6;
-  const radius = (size - stroke) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference * (1 - clamp(progress));
-  return (
-    <Svg width={size} height={size}>
-      <Circle cx={size / 2} cy={size / 2} r={radius} stroke="#e8ebeb" strokeWidth={stroke} fill="none" />
-      <Circle
-        cx={size / 2}
-        cy={size / 2}
-        r={radius}
-        stroke={color}
-        strokeWidth={stroke}
-        fill="none"
-        strokeDasharray={`${circumference} ${circumference}`}
-        strokeDashoffset={dashOffset}
-        strokeLinecap="round"
-        rotation="-90"
-        origin={`${size / 2}, ${size / 2}`}
-      />
-    </Svg>
-  );
-};
-
 const mealIcons: Record<MealType, keyof typeof Ionicons.glyphMap> = {
   breakfast: "sunny-outline",
   lunch: "restaurant-outline",
@@ -52,14 +25,15 @@ export const HomeScreen = (): React.JSX.Element => {
   const { logs } = useLogs();
   const { user } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const [selectedDate, setSelectedDate] = React.useState<string>(new Date().toISOString());
   const [expandedMeal, setExpandedMeal] = React.useState<MealType | null>(null);
   const [scanModalVisible, setScanModalVisible] = React.useState(false);
   const [scanMealType, setScanMealType] = React.useState<MealType | undefined>(undefined);
 
-  const todayNutrition = useMemo(() => {
-    const todayIso = new Date().toISOString();
-    const todayLogs = logs.filter((log) => isSameDay(log.date, todayIso));
-    return todayLogs.reduce(
+  const selectedDayLogs = useMemo(() => logs.filter((log) => isSameDay(log.date, selectedDate)), [logs, selectedDate]);
+
+  const selectedNutrition = useMemo(() => {
+    return selectedDayLogs.reduce(
       (acc, log) => ({
         calories: acc.calories + log.totalNutrition.calories,
         protein: acc.protein + log.totalNutrition.protein,
@@ -68,29 +42,32 @@ export const HomeScreen = (): React.JSX.Element => {
       }),
       emptyNutrition()
     );
-  }, [logs]);
+  }, [selectedDayLogs]);
 
   const dailyGoals = user?.dailyGoals || { calories: 2200, protein: 140, carbs: 250, fat: 70 };
-  const caloriesLeft = Math.max(0, dailyGoals.calories - todayNutrition.calories);
-  const proteinLeft = Math.max(0, dailyGoals.protein - todayNutrition.protein);
-  const carbsLeft = Math.max(0, dailyGoals.carbs - todayNutrition.carbs);
+  const caloriesLeft = Math.max(0, dailyGoals.calories - selectedNutrition.calories);
+  const proteinLeft = Math.max(0, dailyGoals.protein - selectedNutrition.protein);
+  const carbsLeft = Math.max(0, dailyGoals.carbs - selectedNutrition.carbs);
+  const proteinCompleted = Math.min(dailyGoals.protein, selectedNutrition.protein);
+  const carbsCompleted = Math.min(dailyGoals.carbs, selectedNutrition.carbs);
+  const proteinProgress = clamp(selectedNutrition.protein / Math.max(dailyGoals.protein, 1));
+  const carbsProgress = clamp(selectedNutrition.carbs / Math.max(dailyGoals.carbs, 1));
 
   const dayStrip = useMemo(() => {
     const now = new Date();
     return Array.from({ length: 7 }).map((_, index) => {
       const day = new Date(now);
-      day.setDate(now.getDate() - 2 + index);
+      day.setHours(0, 0, 0, 0);
+      day.setDate(now.getDate() - 6 + index);
       const isToday = isSameDay(day.toISOString(), now.toISOString());
       return {
+        iso: day.toISOString(),
         label: day.toLocaleDateString(undefined, { weekday: "short" }),
         day: day.getDate(),
         isToday
       };
     });
   }, []);
-
-  const todayIso = new Date().toISOString();
-  const todayLogs = useMemo(() => logs.filter((log) => isSameDay(log.date, todayIso)), [logs, todayIso]);
 
   const mealCards = useMemo(() => {
     const order: Array<{ key: MealType; title: string }> = [
@@ -100,7 +77,7 @@ export const HomeScreen = (): React.JSX.Element => {
       { key: "dinner", title: "Dinner" }
     ];
     return order.map((meal) => {
-      const entries = todayLogs.filter((log) => log.mealType === meal.key);
+      const entries = selectedDayLogs.filter((log) => log.mealType === meal.key);
       const calories = entries.reduce((sum, entry) => sum + entry.totalNutrition.calories, 0);
       const protein = entries.reduce((sum, entry) => sum + entry.totalNutrition.protein, 0);
       const carbs = entries.reduce((sum, entry) => sum + entry.totalNutrition.carbs, 0);
@@ -118,7 +95,7 @@ export const HomeScreen = (): React.JSX.Element => {
         foods
       };
     });
-  }, [todayLogs]);
+  }, [selectedDayLogs]);
 
   const openMealScanner = (mealType: MealType): void => {
     setScanMealType(mealType);
@@ -135,22 +112,34 @@ export const HomeScreen = (): React.JSX.Element => {
       <View style={styles.card}>
         <View style={styles.dayRow}>
           {dayStrip.map((day) => (
-            <View key={`${day.label}_${day.day}`} style={[styles.dayPill, day.isToday && styles.dayPillActive]}>
-              <Text style={[styles.dayLabel, day.isToday && styles.dayLabelActive]}>{day.label}</Text>
-              <Text style={[styles.dayNum, day.isToday && styles.dayLabelActive]}>{day.day}</Text>
-            </View>
+            <Pressable
+              key={day.iso}
+              onPress={() => {
+                setSelectedDate(day.iso);
+                setExpandedMeal(null);
+              }}
+              style={[styles.dayPill, isSameDay(day.iso, selectedDate) && styles.dayPillActive]}
+            >
+              <Text style={[styles.dayLabel, isSameDay(day.iso, selectedDate) && styles.dayLabelActive]}>{day.label}</Text>
+              <Text style={[styles.dayNum, isSameDay(day.iso, selectedDate) && styles.dayLabelActive]}>{day.day}</Text>
+            </Pressable>
           ))}
         </View>
 
         <View style={styles.calorieRow}>
-          <Text style={styles.leftText}>Calories left</Text>
+          <View style={styles.metricLabelRow}>
+            <View style={[styles.metricIconWrap, { backgroundColor: "#e9f8ec" }]}>
+              <Ionicons name="flame-outline" size={14} color="#2db348" />
+            </View>
+            <Text style={styles.leftText}>Calories left</Text>
+          </View>
           <Text style={styles.bigNumber}>{Math.round(caloriesLeft).toLocaleString()}</Text>
         </View>
         <View style={styles.progressTrack}>
           <View
             style={[
               styles.progressFill,
-              { width: `${clamp(todayNutrition.calories / Math.max(dailyGoals.calories, 1)) * 100}%` }
+              { width: `${clamp(selectedNutrition.calories / Math.max(dailyGoals.calories, 1)) * 100}%` }
             ]}
           />
         </View>
@@ -158,19 +147,39 @@ export const HomeScreen = (): React.JSX.Element => {
 
       <View style={styles.splitRow}>
         <View style={styles.statCard}>
-          <Text style={styles.statTitle}>Protein left</Text>
-          <Text style={styles.statValue}>{Math.round(proteinLeft).toLocaleString()}</Text>
-          <Text style={styles.statUnit}>g</Text>
-          <View style={styles.ringWrap}>
-            <RingMeter progress={todayNutrition.protein / Math.max(dailyGoals.protein, 1)} color="#52de6d" />
+          <View style={styles.metricLabelRow}>
+            <View style={[styles.metricIconWrap, { backgroundColor: "#e9f8ec" }]}>
+              <Ionicons name="barbell-outline" size={14} color="#2db348" />
+            </View>
+            <Text style={styles.statTitle}>Protein left</Text>
+          </View>
+          <View style={styles.valueUnitRow}>
+            <Text style={[styles.statValue, styles.centeredValue]}>{Math.round(proteinLeft).toLocaleString()}</Text>
+            <Text style={styles.statUnitInline}>g</Text>
+          </View>
+          <Text style={styles.completedText}>
+            Completed: {Math.round(proteinCompleted)} / {Math.round(dailyGoals.protein)} g
+          </Text>
+          <View style={styles.miniTrack}>
+            <View style={[styles.miniFill, { width: `${proteinProgress * 100}%` }]} />
           </View>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statTitle}>Carbs left</Text>
-          <Text style={styles.statValue}>{Math.round(carbsLeft).toLocaleString()}</Text>
-          <Text style={styles.statUnit}>g</Text>
-          <View style={styles.ringWrap}>
-            <RingMeter progress={todayNutrition.carbs / Math.max(dailyGoals.carbs, 1)} color="#ff6a00" />
+          <View style={styles.metricLabelRow}>
+            <View style={[styles.metricIconWrap, { backgroundColor: "#fff2e8" }]}>
+              <Ionicons name="nutrition-outline" size={14} color="#ff6a00" />
+            </View>
+            <Text style={styles.statTitle}>Carbs left</Text>
+          </View>
+          <View style={styles.valueUnitRow}>
+            <Text style={[styles.statValue, styles.centeredValue]}>{Math.round(carbsLeft).toLocaleString()}</Text>
+            <Text style={styles.statUnitInline}>g</Text>
+          </View>
+          <Text style={styles.completedText}>
+            Completed: {Math.round(carbsCompleted)} / {Math.round(dailyGoals.carbs)} g
+          </Text>
+          <View style={styles.miniTrack}>
+            <View style={[styles.miniFillCarb, { width: `${carbsProgress * 100}%` }]} />
           </View>
         </View>
       </View>
@@ -332,6 +341,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center"
   },
+  metricLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6
+  },
+  metricIconWrap: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center"
+  },
   leftText: {
     color: "#737d81",
     fontWeight: "700"
@@ -374,13 +395,47 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     color: "#172226"
   },
-  statUnit: {
-    color: "#7b8488",
-    fontWeight: "700"
+  valueUnitRow: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "center",
+    gap: 4
   },
-  ringWrap: {
-    marginTop: -46,
-    alignItems: "flex-end"
+  centeredValue: {
+    textAlign: "center",
+    marginTop: 0
+  },
+  statUnitInline: {
+    color: "#7b8488",
+    fontWeight: "700",
+    fontSize: 15,
+    paddingBottom: 6
+  },
+  completedText: {
+    marginTop: 2,
+    color: "#5f6d72",
+    fontWeight: "700",
+    fontSize: 12,
+    textAlign: "center"
+  },
+  miniTrack: {
+    marginTop: 6,
+    height: 7,
+    borderRadius: 999,
+    backgroundColor: "#dfe8e2",
+    overflow: "hidden",
+    width: "100%"
+  },
+  miniFill: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: "#37bf57"
+  },
+  miniFillCarb: {
+    height: "100%",
+    borderRadius: 999,
+    backgroundColor: "#ff7a1a"
   },
   sectionTitle: {
     color: "#6f777b",

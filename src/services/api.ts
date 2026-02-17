@@ -1,10 +1,14 @@
-import { GeminiAnalysisResult } from "@/types/models";
+import { DiscoverFeed, GeminiAnalysisResult } from "@/types/models";
 import { config } from "@/constants/config";
 import * as FileSystem from "expo-file-system/legacy";
 
 interface AnalyzePayload {
   image: string;
   mimeType: string;
+}
+
+interface DiscoverPayload {
+  summary: Record<string, unknown>;
 }
 
 const baseUrl = config.apiBaseUrl;
@@ -45,5 +49,22 @@ export const apiService = {
       }
       throw error;
     }
+  },
+
+  async generateDiscoverFeed(payload: DiscoverPayload): Promise<DiscoverFeed> {
+    const response = await fetch(`${baseUrl}/api/discover-feed`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || "Failed to generate discover feed.");
+    }
+
+    return (await response.json()) as DiscoverFeed;
   }
 };

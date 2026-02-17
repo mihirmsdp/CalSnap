@@ -91,6 +91,12 @@ export const LogScreen = (): React.JSX.Element => {
           });
         }
       },
+      {
+        text: "Manual Search (USDA)",
+        onPress: () => {
+          navigation.navigate("FoodSearch", { mealType: "breakfast" });
+        }
+      },
       { text: "Cancel", style: "cancel" }
     ]);
   };
