@@ -2,11 +2,11 @@ import { searchFoods } from "@/services/usdaFoodService";
 
 describe("usdaFoodService", () => {
   const originalEnv = process.env.EXPO_PUBLIC_USDA_API_KEY;
-  const originalFetch = global.fetch;
+  const originalFetch = globalThis.fetch;
 
   afterEach(() => {
     process.env.EXPO_PUBLIC_USDA_API_KEY = originalEnv;
-    global.fetch = originalFetch;
+    globalThis.fetch = originalFetch;
     jest.clearAllMocks();
   });
 
@@ -17,7 +17,7 @@ describe("usdaFoodService", () => {
 
   it("maps nutrients from foodNutrients and keeps 100g values", async () => {
     process.env.EXPO_PUBLIC_USDA_API_KEY = "test-key";
-    global.fetch = jest.fn().mockResolvedValue({
+    globalThis.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         foods: [
@@ -57,7 +57,7 @@ describe("usdaFoodService", () => {
 
   it("falls back to label nutrients and converts per serving to 100g", async () => {
     process.env.EXPO_PUBLIC_USDA_API_KEY = "test-key";
-    global.fetch = jest.fn().mockResolvedValue({
+    globalThis.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
         foods: [
