@@ -107,6 +107,20 @@ npm run test:server
 - `src/services/__tests__/usdaFoodService.test.ts`
 - `server/__tests__/api.test.js`
 
+## CI (GitHub Actions)
+This repo includes CI at:
+- `.github/workflows/ci.yml`
+
+The workflow runs automatically on:
+- every `push`
+- every `pull_request`
+
+CI steps:
+1. Install root dependencies (`npm ci`)
+2. Install server dependencies (`npm ci --prefix server`)
+3. Run app typecheck (`npm run typecheck`)
+4. Run all tests (`npm test`)
+
 ## Security Notes
 - Gemini API key stays on server (`server/index.js`), never in client code.
 - Client sends image data to your backend endpoint only.
