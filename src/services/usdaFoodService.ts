@@ -1,4 +1,3 @@
-const USDA_API_KEY = process.env.EXPO_PUBLIC_USDA_API_KEY;
 const BASE_URL = "https://api.nal.usda.gov/fdc/v1";
 
 export interface FoodItem {
@@ -168,7 +167,8 @@ export async function searchFoods(
   page = 1,
   pageSize = 20,
 ): Promise<{ foods: FoodItem[]; totalPages: number }> {
-  if (!USDA_API_KEY) {
+  const usdaApiKey = process.env.EXPO_PUBLIC_USDA_API_KEY;
+  if (!usdaApiKey) {
     throw new Error(
       "Missing USDA API key. Set EXPO_PUBLIC_USDA_API_KEY in .env",
     );
@@ -176,7 +176,7 @@ export async function searchFoods(
 
   const params = new URLSearchParams({
     query,
-    api_key: USDA_API_KEY,
+    api_key: usdaApiKey,
     pageNumber: page.toString(),
     pageSize: pageSize.toString(),
   });

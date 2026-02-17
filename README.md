@@ -73,6 +73,40 @@ npm run dev
 npm run start
 ```
 
+## Testing
+This project includes app tests (Jest + `jest-expo`) and server API tests (Node test runner + Supertest).
+
+### Run all tests
+```bash
+npm test
+```
+
+### Run app tests only
+```bash
+npm run test:app
+```
+
+### Run app tests in watch mode
+```bash
+npm run test:app:watch
+```
+
+### Run app coverage
+```bash
+npm run test:coverage
+```
+
+### Run server tests only
+```bash
+npm run test:server
+```
+
+### Current test files
+- `src/utils/__tests__/nutrition.test.ts`
+- `src/services/__tests__/foodCacheService.test.ts`
+- `src/services/__tests__/usdaFoodService.test.ts`
+- `server/__tests__/api.test.js`
+
 ## Security Notes
 - Gemini API key stays on server (`server/index.js`), never in client code.
 - Client sends image data to your backend endpoint only.

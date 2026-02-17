@@ -1,7 +1,7 @@
 ﻿/* eslint-disable no-undef */
 import dotenv from "dotenv";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import cors from "cors";
 import express from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 dotenv.config({ path: path.resolve(__dirname, ".env"), override: true });
 
-const app = express();
+export const app = express();
 const port = process.env.PORT || 4000;
 
 app.use(cors());
@@ -225,7 +225,12 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true, now: new Date().toISOString() });
 });
 
-app.listen(port, () => {
-  // eslint-disable-next-line no-console
-  console.log(`Food logging API running on :${port}`);
-});
+const isDirectRun =
+  typeof process.argv[1] === "string" && pathToFileURL(process.argv[1]).href === import.meta.url;
+
+if (isDirectRun) {
+  app.listen(port, () => {
+    // eslint-disable-next-line no-console
+    console.log(`Food logging API running on :${port}`);
+  });
+}
