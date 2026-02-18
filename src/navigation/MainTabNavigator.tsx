@@ -9,11 +9,16 @@ import { ProfileScreen } from "@/screens/main/ProfileScreen";
 import { DiscoverScreen } from "@/screens/main/DiscoverScreen";
 import { ScanPlaceholderScreen } from "@/screens/main/ScanPlaceholderScreen";
 import { ScanActionModal } from "@/components/logging/ScanActionModal";
+import { adService } from "@/services/ads";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export const MainTabNavigator = (): React.JSX.Element => {
   const [scanModalVisible, setScanModalVisible] = React.useState(false);
+
+  React.useEffect(() => {
+    adService.initialize();
+  }, []);
 
   return (
     <>
@@ -82,7 +87,16 @@ export const MainTabNavigator = (): React.JSX.Element => {
             }
           }}
         />
-        <Tab.Screen name="Discover" component={DiscoverScreen} options={{ title: "Discover" }} />
+        <Tab.Screen
+          name="Discover"
+          component={DiscoverScreen}
+          options={{ title: "Discover" }}
+          listeners={{
+            tabPress: () => {
+              adService.maybeShowDiscoverInterstitial();
+            }
+          }}
+        />
         <Tab.Screen name="Profile" component={ProfileScreen} />
       </Tab.Navigator>
 

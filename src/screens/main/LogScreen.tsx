@@ -7,6 +7,7 @@ import { Screen } from "@/components/common/Screen";
 import { colors } from "@/constants/theme";
 import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { apiService } from "@/services/api";
+import { adService } from "@/services/ads";
 import { MainStackParamList } from "@/types/navigation";
 
 export const LogScreen = (): React.JSX.Element => {
@@ -59,10 +60,12 @@ export const LogScreen = (): React.JSX.Element => {
       if (!analysis.foods || analysis.foods.length === 0) {
         throw new Error("No food detected in image. Please try a clearer photo.");
       }
-      navigation.navigate("EditFoodLog", {
-        mode: "new",
-        imageUri: selectedUri,
-        aiResults: analysis
+      adService.showScanInterstitialBeforeNavigate(() => {
+        navigation.navigate("EditFoodLog", {
+          mode: "new",
+          imageUri: selectedUri,
+          aiResults: analysis
+        });
       });
     } catch (err) {
       const message = (err as Error).message || "Failed to analyze image. Please try again.";

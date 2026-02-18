@@ -5,6 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { apiService } from "@/services/api";
+import { adService } from "@/services/ads";
 import { MainStackParamList } from "@/types/navigation";
 import { MealType } from "@/types/models";
 
@@ -144,7 +145,9 @@ export const ScanActionModal = ({
         return;
       }
       onClose();
-      navigation.navigate("EditFoodLog", { mode: "new", imageUri, aiResults, preselectedMealType });
+      adService.showScanInterstitialBeforeNavigate(() => {
+        navigation.navigate("EditFoodLog", { mode: "new", imageUri, aiResults, preselectedMealType });
+      });
     } catch (error) {
       Alert.alert(
         "Analysis Failed",

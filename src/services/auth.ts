@@ -42,6 +42,8 @@ interface ProfileDoc {
 }
 
 const usersCollection = "users";
+let optimisticGuestUid: string | null = null;
+let optimisticGuestExpiresAt = 0;
 
 const resolveProfileIdentity = (input: {
   uid: string;
@@ -150,6 +152,9 @@ export const authService = {
     const guestProfile = buildGuestProfile(identity);
     // Persist in background to avoid blocking guest entry on Firestore latency.
     void setDoc(profileRef(credential.user.uid), guestProfile, { merge: true }).catch(() => undefined);
+    // Allow one short optimistic window immediately after explicit guest sign-in.
+    optimisticGuestUid = credential.user.uid;
+    optimisticGuestExpiresAt = Date.now() + 15000;
     const user = mapProfile(credential.user.uid, guestProfile);
     const token = await credential.user.getIdToken();
     return { token, user };
@@ -198,15 +203,25 @@ export const authService = {
             isAnonymous: firebaseUser.isAnonymous
           });
           if (firebaseUser.isAnonymous) {
-            // Guest flow should feel instant: emit optimistic profile first.
-            const optimistic = mapProfile(firebaseUser.uid, buildGuestProfile(identity));
             const token = await firebaseUser.getIdToken();
-            callback({ token, user: optimistic });
+            const canUseOptimisticGuest =
+              optimisticGuestUid === firebaseUser.uid && Date.now() < optimisticGuestExpiresAt;
 
-            // Hydrate from Firestore in background to pick up custom guest name if present.
-            void getOrCreateProfile(firebaseUser.uid, identity.email, identity.name)
-              .then((hydrated) => callback({ token, user: hydrated }))
-              .catch(() => undefined);
+            if (canUseOptimisticGuest) {
+              // Fresh guest sign-in should feel instant.
+              const optimistic = mapProfile(firebaseUser.uid, buildGuestProfile(identity));
+              callback({ token, user: optimistic });
+              void getOrCreateProfile(firebaseUser.uid, identity.email, identity.name)
+                .then((hydrated) => callback({ token, user: hydrated }))
+                .catch(() => undefined);
+              optimisticGuestUid = null;
+              optimisticGuestExpiresAt = 0;
+              return;
+            }
+
+            // Returning guest session: load stored profile first to avoid name-screen flicker.
+            const hydrated = await getOrCreateProfile(firebaseUser.uid, identity.email, identity.name);
+            callback({ token, user: hydrated });
             return;
           }
           const user = await getOrCreateProfile(firebaseUser.uid, identity.email, identity.name);

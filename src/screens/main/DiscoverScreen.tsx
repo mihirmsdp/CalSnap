@@ -7,6 +7,7 @@ import { useLogs } from "@/hooks/useLogs";
 import { DiscoverCard, DiscoverFeed } from "@/types/models";
 import { apiService } from "@/services/api";
 import { databaseService } from "@/services/database";
+import { AdBanner } from "@/components/ads/AdBanner";
 
 const categoryIcon: Record<string, keyof typeof Ionicons.glyphMap> = {
   swap: "swap-horizontal-outline",
@@ -148,6 +149,8 @@ export const DiscoverScreen = (): React.JSX.Element => {
       ) : null}
 
       {!loading && !error && !feed?.cards?.length ? <Text style={styles.muted}>No discover cards yet.</Text> : null}
+
+      <AdBanner />
     </Screen>
   );
 };

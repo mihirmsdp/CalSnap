@@ -20,11 +20,19 @@ import { PrimaryButton } from "@/components/common/PrimaryButton";
 import { colors } from "@/constants/theme";
 import { MainStackParamList } from "@/types/navigation";
 
+const getLocalDayKey = (iso: string): string => {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
 const getStreak = (days: string[]): number => {
   const set = new Set(days);
   let streak = 0;
   const cursor = new Date();
-  while (set.has(cursor.toISOString().slice(0, 10))) {
+  while (set.has(getLocalDayKey(cursor.toISOString()))) {
     streak += 1;
     cursor.setDate(cursor.getDate() - 1);
   }
@@ -81,16 +89,10 @@ export const ProfileScreen = (): React.JSX.Element => {
   const [lastName, setLastName] = useState(nameParts.slice(1).join(" ") || "");
 
   const dayKeys = useMemo(
-    () => Array.from(new Set(logs.map((log) => log.date.slice(0, 10)))),
+    () => Array.from(new Set(logs.map((log) => getLocalDayKey(log.date)))),
     [logs]
   );
   const streak = getStreak(dayKeys);
-  const achievements = [
-    streak >= 7,
-    streak >= 30,
-    logs.length >= 100,
-    !!user?.onboardingData?.targetWeightKg
-  ].filter(Boolean).length;
 
   if (!user) {
     return (
@@ -177,7 +179,6 @@ export const ProfileScreen = (): React.JSX.Element => {
         <View style={styles.statsCard}>
           <Setting label="Member since" value={new Date(user.createdAt).toLocaleDateString()} />
           <Setting label="Streak" value={`${streak} day${streak === 1 ? "" : "s"}`} />
-          <Setting label="Achievements" value={`${achievements} Unlocked`} />
         </View>
       </View>
 

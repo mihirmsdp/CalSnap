@@ -1,7 +1,15 @@
 node_modules/
 .expo/
+android/
+ios/
 dist/
 build/
 .env
+.env.*
+!.env.example
+google-services.json
+GoogleService-Info.plist
+**/google-services.json
+**/GoogleService-Info.plist
 *.log
 coverage/
