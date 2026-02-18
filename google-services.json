@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "159771087725",
+    "project_id": "food-logging-e165e",
+    "storage_bucket": "food-logging-e165e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:159771087725:android:ebfb42d5871f5c0be74064",
+        "android_client_info": {
+          "package_name": "com.mihirmsdp.calsnap"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "159771087725-v5ol4k8i2scrf7oem547o1firnobarlc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mihirmsdp.calsnap",
+            "certificate_hash": "b51ac9ea46a7a3cd9d09d5bb4e20b7c118aba033"
+          }
+        },
+        {
+          "client_id": "159771087725-mset74un1uc3au5nsh4c2kkbkfqsikh6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBnFgFRIhuuCyuPB-BXexIVUcK4sL7d-7U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "159771087725-mset74un1uc3au5nsh4c2kkbkfqsikh6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -5,9 +5,12 @@ import { MainNavigator } from "@/navigation/MainNavigator";
 import { OnboardingNavigator } from "@/navigation/OnboardingNavigator";
 import { useAuth } from "@/hooks/useAuth";
 import { colors } from "@/constants/theme";
+import { GuestNameScreen } from "@/screens/auth/GuestNameScreen";
 
 export const RootNavigator = (): React.JSX.Element => {
   const { user, loading } = useAuth();
+  const isGuest = !!user?.email?.endsWith("@guest.local");
+  const needsGuestName = isGuest && (!user?.name || /^guest(\s|$)/i.test(user.name.trim()));
 
   if (loading) {
     return (
@@ -26,6 +29,10 @@ export const RootNavigator = (): React.JSX.Element => {
 
   if (!user) {
     return <AuthNavigator />;
+  }
+
+  if (needsGuestName) {
+    return <GuestNameScreen />;
   }
 
   if (!user.onboardingCompleted) {

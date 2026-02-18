@@ -84,10 +84,10 @@ const defaultsFromUser = (user: UserProfile | null) => {
     healthConditions: onboarding?.healthConditions || ([] as HealthCondition[]),
     dietaryPreferences: onboarding?.dietaryPreferences || ([] as DietaryPreference[]),
     gender: (onboarding?.gender || "male") as "male" | "female" | "other",
-    age: String(onboarding?.age || user?.age || 28),
-    heightCm: String(onboarding?.heightCm || user?.height || 170),
-    weightKg: String(onboarding?.weightKg || user?.weight || 70),
-    targetWeightKg: String(onboarding?.targetWeightKg || ""),
+    age: onboarding?.age ?? user?.age ? String(onboarding?.age ?? user?.age) : "",
+    heightCm: onboarding?.heightCm ?? user?.height ? String(onboarding?.heightCm ?? user?.height) : "",
+    weightKg: onboarding?.weightKg ?? user?.weight ? String(onboarding?.weightKg ?? user?.weight) : "",
+    targetWeightKg: onboarding?.targetWeightKg ? String(onboarding.targetWeightKg) : "",
     activityLevel: (onboarding?.activityLevel || "moderate") as ActivityLevel
   };
 };
@@ -110,11 +110,11 @@ export const OnboardingQuestionnaire = ({
   const [age, setAge] = useState(defaults.age);
   const [heightUnit, setHeightUnit] = useState<"cm" | "ft">("cm");
   const [heightCm, setHeightCm] = useState(defaults.heightCm);
-  const [heightFt, setHeightFt] = useState("5");
-  const [heightIn, setHeightIn] = useState("8");
+  const [heightFt, setHeightFt] = useState("");
+  const [heightIn, setHeightIn] = useState("");
   const [weightUnit, setWeightUnit] = useState<"kg" | "lbs">("kg");
   const [weightKg, setWeightKg] = useState(defaults.weightKg);
-  const [weightLbs, setWeightLbs] = useState(String(Math.round(convertKgToLbs(parseNum(defaults.weightKg)))));
+  const [weightLbs, setWeightLbs] = useState(defaults.weightKg ? String(Math.round(convertKgToLbs(parseNum(defaults.weightKg)))) : "");
   const [targetWeightKg, setTargetWeightKg] = useState(defaults.targetWeightKg);
   const [targetWeightLbs, setTargetWeightLbs] = useState("");
   const [activityLevel, setActivityLevel] = useState<ActivityLevel>(defaults.activityLevel);
@@ -209,7 +209,7 @@ export const OnboardingQuestionnaire = ({
         age: parseNum(age),
         heightCm: normalizedHeightCm,
         weightKg: normalizedWeightKg,
-        targetWeightKg: normalizedTargetWeightKg,
+        ...(normalizedTargetWeightKg !== undefined ? { targetWeightKg: normalizedTargetWeightKg } : {}),
         activityLevel,
         macroTargets,
         onboardingCompleted: true,
@@ -339,11 +339,11 @@ export const OnboardingQuestionnaire = ({
               </Pressable>
             </View>
             {heightUnit === "cm" ? (
-              <TextInput value={heightCm} onChangeText={setHeightCm} keyboardType="numeric" style={styles.input} />
+              <TextInput value={heightCm} onChangeText={setHeightCm} keyboardType="numeric" placeholder="Height (cm)" style={styles.input} />
             ) : (
               <View style={styles.row}>
-                <TextInput value={heightFt} onChangeText={setHeightFt} keyboardType="numeric" style={[styles.input, styles.half]} />
-                <TextInput value={heightIn} onChangeText={setHeightIn} keyboardType="numeric" style={[styles.input, styles.half]} />
+                <TextInput value={heightFt} onChangeText={setHeightFt} keyboardType="numeric" placeholder="ft" style={[styles.input, styles.half]} />
+                <TextInput value={heightIn} onChangeText={setHeightIn} keyboardType="numeric" placeholder="in" style={[styles.input, styles.half]} />
               </View>
             )}
           </View>

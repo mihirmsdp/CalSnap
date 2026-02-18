@@ -5,10 +5,14 @@ import { colors } from "@/constants/theme";
 
 export const Screen = ({
   children,
-  scroll = true
+  scroll = true,
+  topOffset = 8,
+  backgroundColor = colors.background
 }: {
   children: React.ReactNode;
   scroll?: boolean;
+  topOffset?: number;
+  backgroundColor?: string;
 }): React.JSX.Element => {
   const insets = useSafeAreaInsets();
 
@@ -17,9 +21,9 @@ export const Screen = ({
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
-          { paddingTop: insets.top + 8, paddingBottom: Math.max(16, insets.bottom + 12) }
+          { paddingTop: insets.top + topOffset, paddingBottom: Math.max(16, insets.bottom + 12) }
         ]}
-        style={styles.root}
+        style={[styles.root, { backgroundColor }]}
       >
         {children}
       </ScrollView>
@@ -30,7 +34,8 @@ export const Screen = ({
       style={[
         styles.fixed,
         {
-          paddingTop: insets.top + 8,
+          backgroundColor,
+          paddingTop: insets.top + topOffset,
           paddingBottom: Math.max(16, insets.bottom + 12)
         }
       ]}

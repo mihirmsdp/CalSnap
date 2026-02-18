@@ -7,6 +7,8 @@ interface AuthContextValue {
   token: string | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: (idToken: string) => Promise<void>;
+  signInAsGuest: () => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
   recoverPassword: (email: string) => Promise<void>;
@@ -51,6 +53,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }): React
       loading,
       signIn: async (email, password) => {
         const session = await authService.signIn(email, password);
+        setUser(session.user);
+        setToken(session.token);
+      },
+      signInWithGoogle: async (idToken) => {
+        const session = await authService.signInWithGoogle(idToken);
+        setUser(session.user);
+        setToken(session.token);
+      },
+      signInAsGuest: async () => {
+        const session = await authService.signInAsGuest();
         setUser(session.user);
         setToken(session.token);
       },

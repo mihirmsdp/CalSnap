@@ -9,7 +9,11 @@ export type AuthStackParamList = {
 };
 
 export type MainTabParamList = {
-  Home: undefined;
+  Home:
+    | {
+        saveSuccessMessage?: string;
+      }
+    | undefined;
   Progress: undefined;
   Scan: undefined;
   Discover: undefined;

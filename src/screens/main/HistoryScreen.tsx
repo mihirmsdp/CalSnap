@@ -150,13 +150,21 @@ const parseWeight = (value: string): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const toTitleCase = (value: string): string =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
 export const HistoryScreen = (): React.JSX.Element => {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { logs, weightEntries, saveWeightEntry } = useLogs();
   const { width: screenWidth } = useWindowDimensions();
 
   const [period, setPeriod] = useState<PeriodKey>("week");
   const [weightInput, setWeightInput] = useState("");
+  const [targetWeightInput, setTargetWeightInput] = useState("");
+  const [targetEditOpen, setTargetEditOpen] = useState(false);
   const [expandedStats, setExpandedStats] = useState<Record<string, boolean>>({
     calories: true,
     macros: true,
@@ -245,10 +253,12 @@ export const HistoryScreen = (): React.JSX.Element => {
   const sortedWeightsAsc = [...weightEntries].sort((a, b) => (a.date > b.date ? 1 : -1));
   const sortedWeightsPeriodAsc = [...filteredWeightEntries].sort((a, b) => (a.date > b.date ? 1 : -1));
 
-  const fallbackStartWeight = user?.onboardingData?.weightKg || user?.weight || 75;
+  const onboardingStartWeight = user?.onboardingData?.weightKg ?? user?.weight;
+  const fallbackStartWeight = onboardingStartWeight ?? 75;
   const targetWeight = user?.onboardingData?.targetWeightKg || fallbackStartWeight;
 
-  const startWeight = sortedWeightsAsc[0]?.weightKg ?? fallbackStartWeight;
+  // Keep "starting weight" anchored to onboarding value when present.
+  const startWeight = onboardingStartWeight ?? sortedWeightsAsc[0]?.weightKg ?? fallbackStartWeight;
   const currentWeight = sortedWeightsAsc[sortedWeightsAsc.length - 1]?.weightKg ?? fallbackStartWeight;
   const weightChange = currentWeight - startWeight;
   const remainingWeight = Math.abs(targetWeight - currentWeight);
@@ -377,6 +387,32 @@ export const HistoryScreen = (): React.JSX.Element => {
     }
   };
 
+  const onSaveTargetWeight = async (): Promise<void> => {
+    if (!user || !user.onboardingData) {
+      Alert.alert("Not available", "Complete onboarding first to set a target weight.");
+      return;
+    }
+    const nextTarget = parseWeight(targetWeightInput);
+    if (nextTarget < 30 || nextTarget > 300) {
+      Alert.alert("Invalid Target", "Enter a target weight between 30 and 300 kg.");
+      return;
+    }
+
+    try {
+      await updateProfile({
+        onboardingData: {
+          ...user.onboardingData,
+          targetWeightKg: nextTarget
+        }
+      });
+      setTargetWeightInput("");
+      setTargetEditOpen(false);
+      Alert.alert("Saved", "Target weight updated.");
+    } catch (error) {
+      Alert.alert("Save Failed", (error as Error).message || "Could not update target weight.");
+    }
+  };
+
   return (
     <Screen>
       <View style={styles.headerRow}>
@@ -407,7 +443,33 @@ export const HistoryScreen = (): React.JSX.Element => {
 
         <WeightLineChart values={weightSeries} width={weightChartWidth} />
 
-        <Text style={styles.subText}>Target: {targetWeight.toFixed(1)} kg</Text>
+        <View style={styles.inlineRow}>
+          <Text style={styles.subText}>Target: {targetWeight.toFixed(1)} kg</Text>
+          <Pressable
+            style={styles.targetEditBtn}
+            onPress={() => {
+              setTargetEditOpen((prev) => !prev);
+              setTargetWeightInput(String(Math.round(targetWeight * 10) / 10));
+            }}
+          >
+            <Ionicons name="create-outline" size={14} color="#1e9f3c" />
+          </Pressable>
+        </View>
+        {targetEditOpen ? (
+          <View style={styles.inlineRow}>
+            <TextInput
+              value={targetWeightInput}
+              onChangeText={setTargetWeightInput}
+              keyboardType="numeric"
+              placeholder="Update target (kg)"
+              style={styles.weightInput}
+            />
+            <Pressable style={styles.secondaryBtn} onPress={() => void onSaveTargetWeight()}>
+              <Ionicons name="save-outline" size={16} color="#1e9f3c" />
+              <Text style={styles.secondaryBtnText}>Update</Text>
+            </Pressable>
+          </View>
+        ) : null}
         <Text style={styles.subText}>Projected: {projectedDate || "Need more entries"}</Text>
 
         <View style={styles.inlineRow}>
@@ -537,7 +599,9 @@ export const HistoryScreen = (): React.JSX.Element => {
         {expandedStats.timing ? (
           <View style={styles.expandBody}>
             {mealTimeAverages.map((item) => (
-              <Text key={item.meal} style={styles.subText}>{item.meal}: {item.label}</Text>
+              <Text key={item.meal} style={styles.subText}>
+                {toTitleCase(item.meal)}: {item.label}
+              </Text>
             ))}
           </View>
         ) : null}
@@ -550,7 +614,9 @@ export const HistoryScreen = (): React.JSX.Element => {
           <View style={styles.expandBody}>
             {topFoodEntries.length ? (
               topFoodEntries.map(([name, count], index) => (
-                <Text key={`${name}_${index}`} style={styles.subText}>{index + 1}. {name} ({count}x)</Text>
+                <Text key={`${name}_${index}`} style={styles.subText}>
+                  {index + 1}. {toTitleCase(name)} ({count}x)
+                </Text>
               ))
             ) : (
               <Text style={styles.subText}>No food stats yet.</Text>
@@ -679,6 +745,16 @@ const styles = StyleSheet.create({
   secondaryBtnText: {
     color: "#1f9f3d",
     fontWeight: "800"
+  },
+  targetEditBtn: {
+    width: 24,
+    height: 24,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#caebd2",
+    backgroundColor: "#effcf2",
+    alignItems: "center",
+    justifyContent: "center"
   },
   gridTwo: {
     flexDirection: "row",

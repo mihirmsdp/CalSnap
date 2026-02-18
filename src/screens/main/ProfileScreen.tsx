@@ -39,6 +39,13 @@ const initials = (name: string): string =>
     .map((part) => part[0]?.toUpperCase())
     .join("");
 
+const formatLabel = (value: string): string =>
+  value
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+
 const SectionCard = ({
   title,
   subtitle,
@@ -66,6 +73,7 @@ export const ProfileScreen = (): React.JSX.Element => {
   const { user, signOut, updateProfile } = useAuth();
   const { logs } = useLogs();
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const isGuestUser = !!user?.email?.endsWith("@guest.local");
 
   const [editNameOpen, setEditNameOpen] = useState(false);
   const nameParts = (user?.name || "").split(" ");
@@ -164,12 +172,12 @@ export const ProfileScreen = (): React.JSX.Element => {
           <Text style={styles.name}>{user.name}</Text>
           <Ionicons name="create-outline" size={16} color="#587178" />
         </Pressable>
-        <Text style={styles.email}>{user.email}</Text>
+        {!isGuestUser ? <Text style={styles.email}>{user.email}</Text> : null}
 
         <View style={styles.statsCard}>
           <Setting label="Member since" value={new Date(user.createdAt).toLocaleDateString()} />
           <Setting label="Streak" value={`${streak} day${streak === 1 ? "" : "s"}`} />
-          <Setting label="Achievements" value={`${achievements} unlocked`} />
+          <Setting label="Achievements" value={`${achievements} Unlocked`} />
         </View>
       </View>
 
@@ -187,13 +195,13 @@ export const ProfileScreen = (): React.JSX.Element => {
       />
       <SectionCard
         title="Activity Level"
-        subtitle={user.onboardingData?.activityLevel || "moderate"}
+        subtitle={formatLabel(user.onboardingData?.activityLevel || "moderate")}
         icon="walk-outline"
         onPress={() => navigation.navigate("ActivityLevel")}
       />
       <SectionCard
         title="Health Goals"
-        subtitle={user.onboardingData?.primaryGoals?.[0]?.replaceAll("_", " ") || "Not set"}
+        subtitle={formatLabel(user.onboardingData?.primaryGoals?.[0] || "Not set")}
         icon="flag-outline"
         onPress={() => navigation.navigate("HealthGoals")}
       />
@@ -206,7 +214,9 @@ export const ProfileScreen = (): React.JSX.Element => {
         <SectionCard title="About" subtitle="Version and legal info" icon="information-circle-outline" onPress={() => navigation.navigate("AboutApp")} />
       </View>
 
-      <SectionCard title="Change Password" subtitle="Update your account security" icon="lock-closed-outline" onPress={() => navigation.navigate("ChangePassword")} />
+      {!isGuestUser ? (
+        <SectionCard title="Change Password" subtitle="Update your account security" icon="lock-closed-outline" onPress={() => navigation.navigate("ChangePassword")} />
+      ) : null}
 
       <PrimaryButton
         label="Sign Out"

@@ -1,7 +1,7 @@
 import React, { useMemo } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Screen } from "@/components/common/Screen";
 import { ScanActionModal } from "@/components/logging/ScanActionModal";
@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { emptyNutrition } from "@/utils/nutrition";
 import { isSameDay } from "@/utils/date";
 import { MealType } from "@/types/models";
-import { MainStackParamList } from "@/types/navigation";
+import { MainStackParamList, MainTabParamList } from "@/types/navigation";
 
 const clamp = (value: number, min = 0, max = 1): number => Math.min(max, Math.max(min, value));
 
@@ -24,11 +24,20 @@ const mealIcons: Record<MealType, keyof typeof Ionicons.glyphMap> = {
 export const HomeScreen = (): React.JSX.Element => {
   const { logs } = useLogs();
   const { user } = useAuth();
+  const route = useRoute<RouteProp<MainTabParamList, "Home">>();
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [selectedDate, setSelectedDate] = React.useState<string>(new Date().toISOString());
   const [expandedMeal, setExpandedMeal] = React.useState<MealType | null>(null);
   const [scanModalVisible, setScanModalVisible] = React.useState(false);
   const [scanMealType, setScanMealType] = React.useState<MealType | undefined>(undefined);
+  const [saveSuccessMessage, setSaveSuccessMessage] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const incomingMessage = route.params?.saveSuccessMessage;
+    if (incomingMessage) {
+      setSaveSuccessMessage(incomingMessage);
+    }
+  }, [route.params]);
 
   const selectedDayLogs = useMemo(() => logs.filter((log) => isSameDay(log.date, selectedDate)), [logs, selectedDate]);
 
@@ -45,11 +54,15 @@ export const HomeScreen = (): React.JSX.Element => {
   }, [selectedDayLogs]);
 
   const dailyGoals = user?.dailyGoals || { calories: 2200, protein: 140, carbs: 250, fat: 70 };
-  const caloriesLeft = Math.max(0, dailyGoals.calories - selectedNutrition.calories);
-  const proteinLeft = Math.max(0, dailyGoals.protein - selectedNutrition.protein);
-  const carbsLeft = Math.max(0, dailyGoals.carbs - selectedNutrition.carbs);
-  const proteinCompleted = Math.min(dailyGoals.protein, selectedNutrition.protein);
-  const carbsCompleted = Math.min(dailyGoals.carbs, selectedNutrition.carbs);
+  const caloriesLeft = dailyGoals.calories - selectedNutrition.calories;
+  const caloriesCompleted = selectedNutrition.calories;
+  const proteinLeft = dailyGoals.protein - selectedNutrition.protein;
+  const carbsLeft = dailyGoals.carbs - selectedNutrition.carbs;
+  const proteinCompleted = selectedNutrition.protein;
+  const carbsCompleted = selectedNutrition.carbs;
+  const overCalories = caloriesLeft < 0;
+  const overProtein = proteinCompleted > dailyGoals.protein;
+  const overCarbs = carbsCompleted > dailyGoals.carbs;
   const proteinProgress = clamp(selectedNutrition.protein / Math.max(dailyGoals.protein, 1));
   const carbsProgress = clamp(selectedNutrition.carbs / Math.max(dailyGoals.carbs, 1));
 
@@ -133,7 +146,7 @@ export const HomeScreen = (): React.JSX.Element => {
             </View>
             <Text style={styles.leftText}>Calories left</Text>
           </View>
-          <Text style={styles.bigNumber}>{Math.round(caloriesLeft).toLocaleString()}</Text>
+          <Text style={[styles.bigNumber, overCalories && styles.leftValueOver]}>{Math.round(caloriesLeft).toLocaleString()}</Text>
         </View>
         <View style={styles.progressTrack}>
           <View
@@ -143,6 +156,11 @@ export const HomeScreen = (): React.JSX.Element => {
             ]}
           />
         </View>
+        <Text style={styles.completedText}>
+          Calories consumed:{" "}
+          <Text style={overCalories ? styles.completedValueOver : undefined}>{Math.round(caloriesCompleted)}</Text> /{" "}
+          {Math.round(dailyGoals.calories)}
+        </Text>
       </View>
 
       <View style={styles.splitRow}>
@@ -154,11 +172,15 @@ export const HomeScreen = (): React.JSX.Element => {
             <Text style={styles.statTitle}>Protein left</Text>
           </View>
           <View style={styles.valueUnitRow}>
-            <Text style={[styles.statValue, styles.centeredValue]}>{Math.round(proteinLeft).toLocaleString()}</Text>
+            <Text style={[styles.statValue, styles.centeredValue, proteinLeft < 0 && styles.leftValueOver]}>
+              {Math.round(proteinLeft).toLocaleString()}
+            </Text>
             <Text style={styles.statUnitInline}>g</Text>
           </View>
           <Text style={styles.completedText}>
-            Completed: {Math.round(proteinCompleted)} / {Math.round(dailyGoals.protein)} g
+            Completed:{" "}
+            <Text style={overProtein ? styles.completedValueOver : undefined}>{Math.round(proteinCompleted)}</Text> /{" "}
+            {Math.round(dailyGoals.protein)} g
           </Text>
           <View style={styles.miniTrack}>
             <View style={[styles.miniFill, { width: `${proteinProgress * 100}%` }]} />
@@ -172,11 +194,14 @@ export const HomeScreen = (): React.JSX.Element => {
             <Text style={styles.statTitle}>Carbs left</Text>
           </View>
           <View style={styles.valueUnitRow}>
-            <Text style={[styles.statValue, styles.centeredValue]}>{Math.round(carbsLeft).toLocaleString()}</Text>
+            <Text style={[styles.statValue, styles.centeredValue, carbsLeft < 0 && styles.leftValueOver]}>
+              {Math.round(carbsLeft).toLocaleString()}
+            </Text>
             <Text style={styles.statUnitInline}>g</Text>
           </View>
           <Text style={styles.completedText}>
-            Completed: {Math.round(carbsCompleted)} / {Math.round(dailyGoals.carbs)} g
+            Completed: <Text style={overCarbs ? styles.completedValueOver : undefined}>{Math.round(carbsCompleted)}</Text>{" "}
+            / {Math.round(dailyGoals.carbs)} g
           </Text>
           <View style={styles.miniTrack}>
             <View style={[styles.miniFillCarb, { width: `${carbsProgress * 100}%` }]} />
@@ -276,6 +301,21 @@ export const HomeScreen = (): React.JSX.Element => {
           setScanMealType(undefined);
         }}
       />
+
+      {saveSuccessMessage ? (
+        <View style={styles.successOverlay}>
+          <View style={styles.successCard}>
+            <View style={styles.successIconWrap}>
+              <Ionicons name="checkmark" size={18} color="#ffffff" />
+            </View>
+            <Text style={styles.successTitle}>Saved</Text>
+            <Text style={styles.successText}>{saveSuccessMessage}</Text>
+            <Pressable style={styles.successBtn} onPress={() => setSaveSuccessMessage(null)}>
+              <Text style={styles.successBtnText}>Continue</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
     </Screen>
   );
 };
@@ -303,6 +343,59 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#ebeeee",
     gap: 10
+  },
+  successOverlay: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: "rgba(10,20,16,0.32)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20
+  },
+  successCard: {
+    width: "100%",
+    maxWidth: 340,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#d6eadb",
+    backgroundColor: "#f6fff8",
+    padding: 18,
+    alignItems: "center",
+    gap: 8
+  },
+  successIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    backgroundColor: "#1f8f36",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  successTitle: {
+    color: "#173223",
+    fontWeight: "900",
+    fontSize: 20
+  },
+  successText: {
+    color: "#3f5c4a",
+    textAlign: "center",
+    fontWeight: "700"
+  },
+  successBtn: {
+    marginTop: 6,
+    minWidth: 130,
+    borderRadius: 999,
+    backgroundColor: "#2eb14b",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    alignItems: "center"
+  },
+  successBtnText: {
+    color: "#ffffff",
+    fontWeight: "900"
   },
   dayRow: {
     flexDirection: "row",
@@ -418,6 +511,12 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 12,
     textAlign: "center"
+  },
+  completedValueOver: {
+    color: "#ef4444"
+  },
+  leftValueOver: {
+    color: "#ef4444"
   },
   miniTrack: {
     marginTop: 6,

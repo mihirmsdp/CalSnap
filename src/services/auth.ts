@@ -1,9 +1,12 @@
 import {
   EmailAuthProvider,
+  GoogleAuthProvider,
   reauthenticateWithCredential,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  signInAnonymously,
+  signInWithCredential,
   signInWithEmailAndPassword,
   updatePassword,
   signOut as firebaseSignOut
@@ -40,6 +43,28 @@ interface ProfileDoc {
 
 const usersCollection = "users";
 
+const resolveProfileIdentity = (input: {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  isAnonymous?: boolean;
+}): { email: string; name?: string } => {
+  if (input.email) {
+    return { email: input.email, name: input.displayName || undefined };
+  }
+  if (input.isAnonymous) {
+    const suffix = input.uid.slice(0, 6);
+    return {
+      email: `guest_${suffix}@guest.local`,
+      name: `Guest ${suffix}`
+    };
+  }
+  return {
+    email: `${input.uid}@user.local`,
+    name: input.displayName || undefined
+  };
+};
+
 const mapProfile = (uid: string, profile: ProfileDoc): UserProfile => ({
   id: uid,
   email: profile.email,
@@ -56,6 +81,14 @@ const mapProfile = (uid: string, profile: ProfileDoc): UserProfile => ({
 });
 
 const profileRef = (uid: string) => doc(firestore, usersCollection, uid);
+
+const buildGuestProfile = (identity: { email: string; name?: string }): ProfileDoc => ({
+  email: identity.email,
+  name: identity.name || "Guest",
+  dailyGoals: defaultGoals,
+  onboardingCompleted: false,
+  createdAt: new Date().toISOString()
+});
 
 const getOrCreateProfile = async (
   uid: string,
@@ -94,6 +127,34 @@ export const authService = {
     return { token, user };
   },
 
+  async signInWithGoogle(idToken: string): Promise<AuthSession> {
+    const credential = GoogleAuthProvider.credential(idToken);
+    const signedIn = await signInWithCredential(firebaseAuth, credential);
+    const email = signedIn.user.email;
+    if (!email) {
+      throw new Error("Google account email is unavailable.");
+    }
+    const user = await getOrCreateProfile(signedIn.user.uid, email, signedIn.user.displayName || undefined);
+    const token = await signedIn.user.getIdToken();
+    return { token, user };
+  },
+
+  async signInAsGuest(): Promise<AuthSession> {
+    const credential = await signInAnonymously(firebaseAuth);
+    const identity = resolveProfileIdentity({
+      uid: credential.user.uid,
+      email: credential.user.email,
+      displayName: credential.user.displayName,
+      isAnonymous: credential.user.isAnonymous
+    });
+    const guestProfile = buildGuestProfile(identity);
+    // Persist in background to avoid blocking guest entry on Firestore latency.
+    void setDoc(profileRef(credential.user.uid), guestProfile, { merge: true }).catch(() => undefined);
+    const user = mapProfile(credential.user.uid, guestProfile);
+    const token = await credential.user.getIdToken();
+    return { token, user };
+  },
+
   async signOut(): Promise<void> {
     await firebaseSignOut(firebaseAuth);
   },
@@ -104,10 +165,16 @@ export const authService = {
 
   async getSession(): Promise<AuthSession | null> {
     const currentUser = firebaseAuth.currentUser;
-    if (!currentUser || !currentUser.email) {
+    if (!currentUser) {
       return null;
     }
-    const user = await getOrCreateProfile(currentUser.uid, currentUser.email);
+    const identity = resolveProfileIdentity({
+      uid: currentUser.uid,
+      email: currentUser.email,
+      displayName: currentUser.displayName,
+      isAnonymous: currentUser.isAnonymous
+    });
+    const user = await getOrCreateProfile(currentUser.uid, identity.email, identity.name);
     const token = await currentUser.getIdToken();
     return { token, user };
   },
@@ -120,11 +187,29 @@ export const authService = {
       firebaseAuth,
       async (firebaseUser) => {
         try {
-          if (!firebaseUser || !firebaseUser.email) {
+          if (!firebaseUser) {
             callback(null);
             return;
           }
-          const user = await getOrCreateProfile(firebaseUser.uid, firebaseUser.email);
+          const identity = resolveProfileIdentity({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            isAnonymous: firebaseUser.isAnonymous
+          });
+          if (firebaseUser.isAnonymous) {
+            // Guest flow should feel instant: emit optimistic profile first.
+            const optimistic = mapProfile(firebaseUser.uid, buildGuestProfile(identity));
+            const token = await firebaseUser.getIdToken();
+            callback({ token, user: optimistic });
+
+            // Hydrate from Firestore in background to pick up custom guest name if present.
+            void getOrCreateProfile(firebaseUser.uid, identity.email, identity.name)
+              .then((hydrated) => callback({ token, user: hydrated }))
+              .catch(() => undefined);
+            return;
+          }
+          const user = await getOrCreateProfile(firebaseUser.uid, identity.email, identity.name);
           const token = await firebaseUser.getIdToken();
           callback({ token, user });
         } catch (error) {

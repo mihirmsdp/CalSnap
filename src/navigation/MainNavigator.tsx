@@ -23,7 +23,7 @@ const Stack = createNativeStackNavigator<MainStackParamList>();
 export const MainNavigator = (): React.JSX.Element => (
   <Stack.Navigator>
     <Stack.Screen name="Tabs" component={MainTabNavigator} options={{ headerShown: false }} />
-    <Stack.Screen name="EditFoodLog" component={EditFoodLogScreen} options={{ title: "Review Food Log" }} />
+    <Stack.Screen name="EditFoodLog" component={EditFoodLogScreen} options={{ headerShown: false }} />
     <Stack.Screen name="OnboardingEdit" component={OnboardingEditScreen} options={{ headerShown: false }} />
     <Stack.Screen name="DailyTargets" component={DailyTargetsScreen} options={{ title: "Daily Targets" }} />
     <Stack.Screen name="BodyStats" component={BodyStatsScreen} options={{ title: "Body Statistics" }} />

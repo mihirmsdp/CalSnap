@@ -1,5 +1,5 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/common/Screen";
 import { useAuth } from "@/hooks/useAuth";
@@ -142,11 +142,6 @@ export const DiscoverScreen = (): React.JSX.Element => {
               </View>
               <Text style={styles.cardDesc}>{card.description}</Text>
               <Text style={styles.cardReason}>{card.reason}</Text>
-              {card.actionLabel ? (
-                <Pressable style={styles.actionPill}>
-                  <Text style={styles.actionText}>{card.actionLabel}</Text>
-                </Pressable>
-              ) : null}
             </View>
           ))}
         </View>
@@ -225,17 +220,5 @@ const styles = StyleSheet.create({
   cardReason: {
     color: "#6a787d",
     fontWeight: "600"
-  },
-  actionPill: {
-    alignSelf: "flex-start",
-    borderRadius: 999,
-    backgroundColor: "#2fb24b",
-    paddingHorizontal: 12,
-    paddingVertical: 7
-  },
-  actionText: {
-    color: "#fff",
-    fontWeight: "800"
   }
 });
-

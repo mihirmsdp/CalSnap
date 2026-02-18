@@ -1,8 +1,8 @@
 ﻿import React, { useMemo, useState } from "react";
 import {
   Alert,
+  Linking,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -389,37 +389,94 @@ export const HealthGoalsScreen = (): React.JSX.Element => {
 };
 
 export const HelpFaqScreen = (): React.JSX.Element => {
-  const [query, setQuery] = useState("");
-  const topics = [
-    "How to log food",
-    "Understanding macros",
-    "Setting up goals",
-    "How AI analysis works",
-    "Improving photo accuracy",
-    "Reading progress charts",
-    "Adjusting targets",
-    "Changing password",
-    "Sync issues"
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const faqs: Array<{ id: string; question: string; answer: string }> = [
+    {
+      id: "log_food",
+      question: "How do I log food?",
+      answer:
+        "Open Home, expand a meal, and tap Log Food. You can scan a photo, review detected items, edit quantity/macros, and save."
+    },
+    {
+      id: "macro_meaning",
+      question: "What do protein, carbs, and fat mean?",
+      answer:
+        "Protein supports muscle and recovery. Carbs are your primary energy source. Fat supports hormones and long-lasting energy."
+    },
+    {
+      id: "targets_setup",
+      question: "How are my calorie and macro targets set?",
+      answer:
+        "Targets are calculated from your onboarding data: age, weight, activity level, health goals, and preferences. You can update them in Profile."
+    },
+    {
+      id: "ai_analysis",
+      question: "How does AI photo analysis work?",
+      answer:
+        "The app detects food items and estimates nutrition from the image. You should review and adjust name, quantity, and values before saving."
+    },
+    {
+      id: "photo_accuracy",
+      question: "How can I improve scan accuracy?",
+      answer:
+        "Use good lighting, keep all food visible, avoid blur, and capture from above. Include only one meal at a time when possible."
+    },
+    {
+      id: "progress_reading",
+      question: "How do I read the Progress charts?",
+      answer:
+        "Calories and macros show either today's totals or period averages. Streak and logging rate summarize consistency over time."
+    },
+    {
+      id: "adjust_targets",
+      question: "Can I change my goals later?",
+      answer:
+        "Yes. Go to Profile and update Daily Targets, Activity Level, or Health Goals. The app recalculates recommendations accordingly."
+    },
+    {
+      id: "password_change",
+      question: "How do I change my password?",
+      answer:
+        "Open Profile, select Change Password, enter current password, then set and confirm your new password."
+    },
+    {
+      id: "sync_issue",
+      question: "My data is not syncing. What should I do?",
+      answer:
+        "Check internet connection, sign out and sign back in, then reopen the app. If issue continues, contact support with screenshots."
+    }
   ];
-  const filtered = topics.filter((topic) => topic.toLowerCase().includes(query.toLowerCase()));
+  const filtered = faqs;
 
   return (
     <Screen>
       <Text style={styles.title}>Help & FAQ</Text>
-      <TextInput
-        style={styles.search}
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Search help topics..."
-        placeholderTextColor="#98a4a9"
-      />
       <View style={styles.card}>
-        {filtered.map((topic) => (
-          <View key={topic} style={styles.topicRow}>
-            <Ionicons name="help-circle-outline" size={16} color="#2ca444" />
-            <Text style={styles.choiceText}>{topic}</Text>
-          </View>
-        ))}
+        {filtered.length ? (
+          filtered.map((item) => {
+            const expanded = expandedId === item.id;
+            return (
+              <Pressable
+                key={item.id}
+                style={[styles.faqRow, expanded && styles.faqRowExpanded]}
+                onPress={() => setExpandedId((prev) => (prev === item.id ? null : item.id))}
+              >
+                <View style={styles.faqHeader}>
+                  <View style={[styles.topicRow, styles.faqTopicRow]}>
+                    <Ionicons name="help-circle-outline" size={16} color="#2ca444" />
+                    <Text style={[styles.choiceText, styles.faqQuestionText]}>{item.question}</Text>
+                  </View>
+                  <View style={styles.faqChevronWrap}>
+                    <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={16} color="#6a777d" />
+                  </View>
+                </View>
+                {expanded ? <Text style={styles.faqAnswer}>{item.answer}</Text> : null}
+              </Pressable>
+            );
+          })
+        ) : (
+          <Text style={styles.subtitle}>No topics available.</Text>
+        )}
       </View>
     </Screen>
   );
@@ -428,6 +485,29 @@ export const HelpFaqScreen = (): React.JSX.Element => {
 export const ContactSupportScreen = (): React.JSX.Element => {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
+
+  const onSendSupportEmail = async (): Promise<void> => {
+    if (!message.trim()) {
+      Alert.alert("Validation", "Please enter your message before sending.");
+      return;
+    }
+
+    const to = "mihirmsdp@gmail.com";
+    const nextSubject = subject.trim() || "CalSnap Support Request";
+    const nextBody = message.trim();
+    const url = `mailto:${to}?subject=${encodeURIComponent(nextSubject)}&body=${encodeURIComponent(nextBody)}`;
+
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (!canOpen) {
+        Alert.alert("Email App Not Found", "No email app is configured on this device.");
+        return;
+      }
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert("Failed", "Could not open your email app.");
+    }
+  };
 
   return (
     <Screen>
@@ -444,7 +524,7 @@ export const ContactSupportScreen = (): React.JSX.Element => {
           placeholder="Describe your issue"
         />
       </View>
-      <PrimaryButton label="Send Message" onPress={() => Alert.alert("Sent", "Your support request has been submitted.")} />
+      <PrimaryButton label="Send Message" onPress={() => void onSendSupportEmail()} />
       <Text style={styles.subtitle}>support@nutrisnap.com</Text>
     </Screen>
   );
@@ -673,6 +753,46 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     paddingVertical: 4
+  },
+  faqRow: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#e7ecef",
+    backgroundColor: "#fbfdfc",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 6,
+    overflow: "hidden"
+  },
+  faqRowExpanded: {
+    borderColor: "#d5eadb",
+    backgroundColor: "#f5fbf7"
+  },
+  faqHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8
+  },
+  faqTopicRow: {
+    flex: 1,
+    paddingVertical: 0,
+    alignItems: "flex-start"
+  },
+  faqQuestionText: {
+    flexShrink: 1,
+    paddingRight: 2
+  },
+  faqChevronWrap: {
+    width: 20,
+    minHeight: 20,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingTop: 1
+  },
+  faqAnswer: {
+    color: "#5d6d72",
+    fontWeight: "600",
+    lineHeight: 19
   },
   starRow: {
     flexDirection: "row",
